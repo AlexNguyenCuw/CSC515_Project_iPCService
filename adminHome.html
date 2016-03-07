@@ -15,7 +15,7 @@ app.controller('controller', function($scope)
     var authData = ref.getAuth();
     if(authData)
     {
-        ref.child("role").child(authData.uid).on("value", function(data) 
+        ref.child("Role").child(authData.uid).on("value", function(data) 
         {
             if(data.val() != "admin")
             {

@@ -1,9 +1,11 @@
-//var app = angular.module('homeContent', ["firebase"]);
+var app = angular.module('ipserviceApp');
 app.controller('contentController', function($scope, $firebaseArray) 
 {
     var ref = new Firebase("https://projectipcservice.firebaseio.com/");
    var authData = ref.getAuth();
     $scope.role = null;
+    $scope.pageMode = "NORMAL";
+    $scope.fname = "Bob";
     if(authData)
     {
         //What role are we?
@@ -14,23 +16,37 @@ app.controller('contentController', function($scope, $firebaseArray)
         });
         
         //if we still alive we are logged in
+        //get profile info
+        var profile = ref.child("profile");
+
         $scope.userEmail = authData.password.email;
 
         //get the data for our pending service requests
         var service_requests = ref.child("service_requests");
         $scope.service_request_data = $firebaseArray(service_requests.orderByChild("user").equalTo(authData.uid));
 
-        $scope.submit = function()
-        {
-            //save the new service request to firebase
-            service_requests.push({user: authData.uid, name: $scope.service_name, provider: "n/a", completed: false});
-            $scope.service_name = "";
-        }
 
         $scope.logout = function() 
         {
             ref.unauth();
             window.location.href = "index.html";
+        } 
+        $scope.profile = function() 
+        {
+            $scope.pageMode = "PROFILE";
+
+        } 
+
+        $scope.normal = function() 
+        {
+            $scope.pageMode = "NORMAL";
+        } 
+
+        $scope.updateProfile = function() 
+        {
+            console.log("HERE -> " + $scope.fname );
+            console.log("HERE -> " + $scope.lname );
+            profile.child(authData.uid).set({fname: $scope.fname, lname: $scope.lname, phone: $scope.phone, street: $scope.street, city: $scope.city, state: $scope.state, zip: $scope.zip});
         } 
     }
 });

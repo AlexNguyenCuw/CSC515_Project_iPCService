@@ -7,7 +7,7 @@ app.use(cors());
 
 app.post('/checkout', function (req, res)
 {
-  var stripe = require("stripe")("pk_test_7QEFavrFqNM90HGNV42IeQkK");
+  var stripe = require("stripe")("pk_test_7CWXt7bFN2aWG2u6QVDjw75j");
 
 	// (Assuming you're using express - expressjs.com)
 	// Get the credit card details submitted by the form
@@ -16,7 +16,7 @@ app.post('/checkout', function (req, res)
 	var stripeToken = req.body.stripeToken;
 	var amount = req.body.amount;
 	console.log(amount);
-	//var stripeToken = "tok_17uA96J2xFzDJb7R5syadNzi";
+
 	var charge = stripe.charges.create({
 	  amount: amount, // amount in cents, again
 	  currency: "usd",

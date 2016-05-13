@@ -7,7 +7,7 @@ app.use(cors());
 
 app.post('/checkout', function (req, res)
 {
-  var stripe = require("stripe")("pk_test_7CWXt7bFN2aWG2u6QVDjw75j");
+  var stripe = require("stripe")("sk_test_hzlBodwIay8Oyfs8RNVjeIxj");
 
 	// (Assuming you're using express - expressjs.com)
 	// Get the credit card details submitted by the form

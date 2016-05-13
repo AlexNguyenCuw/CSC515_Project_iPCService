@@ -13,6 +13,8 @@ License URL: http://creativecommons.org/licenses/by/3.0/
 <script src="https://cdn.firebase.com/libs/angularfire/1.1.3/angularfire.min.js"></script>
 <script src="controllers/indexController.js"></script>
 <script src="controllers/userController.js"></script>
+<script src="controllers/providerController.js"></script>
+<script src="controllers/adminController.js"></script>
 
 <head>
 
@@ -40,12 +42,12 @@ License URL: http://creativecommons.org/licenses/by/3.0/
 				<div class="sap_tabs">
 
 					<div id="horizontalTab" style="display: block; width: 100%; margin: 0px;">
-						  <ul>
-						  	  <!--start- li - sign up here -->
-							  <li class="resp-tab-item" aria-controls="tab_item-1" role="tab"><span>Sign in</span></li>
-						  </ul>
-			  <!---->
-								<div ng-if="isAuthenticated == false" class="login-form" class="tab-2 resp-tab-content" aria-labelledby="tab_item-1">
+							<ul>
+									<!--start- li - sign up here -->
+								<li class="resp-tab-item" aria-controls="tab_item-1" role="tab"><span>Sign in</span></li>
+							</ul>
+				<!---->
+	<div ng-if="isAuthenticated == false" class="login-form" class="tab-2 resp-tab-content" aria-labelledby="tab_item-1">
 											<div class="facts">
 												<div class="register">
 													<form ng-controller="indexController">
@@ -65,151 +67,199 @@ License URL: http://creativecommons.org/licenses/by/3.0/
 					</div>
 				</div>
 
-
-<div ng-if="isAuthenticated == true">
+	<div ng-if="isAuthenticated == true">
 		<h1>Welcome {{ userEmail }} - {{ role }}</h1>
 		<button ng-click="logout()">logout</button>
 
-		<div id ="main" ng-if="role == 'user'" ng-controller="userController">
-				<script src="https://checkout.stripe.com/checkout.js"></script>
-				<script>
+		<div id="main" ng-if="role == 'user'" ng-controller="userController">
+		<script src="https://checkout.stripe.com/checkout.js"></script>
+		<script>
+		  var handler = StripeCheckout.configure({
+		    key: 'pk_test_7CWXt7bFN2aWG2u6QVDjw75j',
+		    image: '/img/documentation/checkout/marketplace.png',
+		    locale: 'auto',
+		    token: function(token)
+		    {
+					console.log(token);
+		    	var scope = angular.element(document.getElementById("main")).scope();
+			  	scope = scope.$$childHead;
+			  	var numberOfMinutes = 0;
+			  	var instructions = "";
+			  	if(scope.serviceType == 'software')
+			  	{
+			  		numberOfMinutes = scope.software_numberOfMinutes;
+			  		instructions = scope.software_instructions;
+			  	}
+			  	else
+			  	{
+			  		numberOfMinutes = scope.hardware_numberOfMinutes;
+			  		instructions = scope.hardware_instructions;
+			  	}
+			  	var cost = scope.costPerMinutes * numberOfMinutes * 100;
+            	$.post( "http://localhost:3000/checkout", { stripeToken: token.id, amount: cost }, function(result)
+            	{
+								console.log(result);
+        			if(result == 'success')
+        			{
+        				//save to firebase
+        				scope.newServiceRequest(scope.serviceType, numberOfMinutes, instructions, cost);
+        				//reset form
+								console.log("in reset");
+        				scope.reset();
+        			}
+        			else
+        			{
+        				console.log("blah");
+        			}
+    			});
 
-				  var handler = StripeCheckout.configure({
-				    key: 'pk_test_7QEFavrFqNM90HGNV42IeQkK',
-				    image: '/img/documentation/checkout/marketplace.png',
-				    locale: 'auto',
-				token: function(token)
-					{
-							var scope = angular.element(document.getElementById("main")).scope();
-										scope = scope.$$childHead;
-										var numberOfMinutes = 0;
-										var instructions = "";
-										if(scope.serviceType == 'software')
-										{
-											numberOfMinutes = scope.software_numberOfMinutes;
-											instructions = scope.software_instructions;
-										}
-										else
-										{
-											numberOfMinutes = scope.hardware_numberOfMinutes;
-											instructions = scope.hardware_instructions;
-										}
-							console.log("CPM: " + scope.costPerMinutes);
-							console.log("numberOfMinutes:" + numberOfMinutes)
+		      // Use the token to create the charge with a server-side script.
+		      // You can access the token ID with `token.id`
+		    }
+		  });
+		  function purchaseButtonPressed()
+		  {
+		  	var scope = angular.element(document.getElementById("main")).scope();
+		  	scope = scope.$$childHead;
+		  	var numberOfMinutes = 0;
+		  	if(scope.serviceType == 'software')
+		  	{
+		  		numberOfMinutes = scope.software_numberOfMinutes;
+		  	}
+		  	else
+		  	{
+		  		numberOfMinutes = scope.hardware_numberOfMinutes;
+		  	}
+		  	var cost = scope.costPerMinutes * numberOfMinutes * 100;
+		    // Open Checkout with further options
+		    handler.open({
+		      name: 'iPC Checkout: ' + scope.serviceType,
+		      description: "Services Time: " + numberOfMinutes,
+		      amount: cost
+		    });
+		  }
+		  // Close Checkout on page navigation
+		  $(window).on('popstate', function() {
+		    handler.close();
+		  });
+		</script>
+			<table width="100%">
+				<tr>
+				  <td width="50%">
+					<form novalidate>
+						<h2>Service Type</h2>
+					   	<button ng-click="softwareButtonOnClick()">Software Services</button>
+					   	<button ng-click="hardwareButtonOnClick()">Hardware Services</button><br/>
+						<div ng-if="serviceType == 'software'">
+							<h1>Software Services</h1>
+							<h1>Current Cost: {{costPerMinutes * software_numberOfMinutes}}</h1>
+							<input type="text" ng-change="changeSoftware()" ng-model="software_numberOfMinutes" style="border: 2px solid #ccc;" width="100%" placeholder="Number of Minutes">
 
-							var cost = scope.costPerMinutes * numberOfMinutes * 100;
-							console.log(cost);
-				$.post( "http://localhost:3000/checkout", { stripeToken: token.id, amount: cost }, function(result)
-				{
-									console.log(result);
-									if(result == 'success')
-									{
-										//reset form
-										console.log("in reset");
+ 							<input type="text" ng-change="changeSoftware()" ng-model="software_instructions" style="border: 2px solid #ccc;" width="100%" placeholder="Special Instructions">
+ 							<br/>
+ 							<button ng-if="software_numberOfMinutes > 0" onclick="purchaseButtonPressed()">Purchase</button>
+						</div>
+						<div ng-if="serviceType == 'hardware'">
+							<h1>Hardware Services</h1>
+							<h1>Current Cost: {{costPerMinutes * hardware_numberOfMinutes}}</h1>
+							<input type="text" ng-change="changeHardware()" ng-model="hardware_numberOfMinutes" style="border: 2px solid #ccc;" width="100%" placeholder="Number of Minutes">
+							<input type="text" ng-change="changeHardware()" ng-model="hardware_instructions" style="border: 2px solid #ccc;" width="100%" placeholder="Special Instructions">
+							<br/>
+ 							<button ng-if="hardware_numberOfMinutes > 0" onclick="purchaseButtonPressed()">Purchase</button>
+						</div>
 
-										//save to firebase
-										scope.newServiceRequest(scope.serviceType, numberOfMinutes, instructions, cost);
+	            	</form>
 
-										scope.reset();
-									}
-									else
-									{
-										console.log("blah");
-									}
-							});
-
-							// Use the token to create the charge with a server-side script.
-							// You can access the token ID with `token.id
-				}
-			});
-				function purchaseButtonPressed()
-				{
-					var scope = angular.element(document.getElementById("main")).scope();
-					scope = scope.$$childHead;
-					var numberOfMinutes= 0;
-					if(scope.serviceType == 'software')
-					{
-						numberOfMinutes = scope.software_numberOfMinutes;
-					}
-					else
-					{
-						numberOfMinutes = scope.hardware_numberOfMinutes;
-					}
-
-					var cost = scope.costPerMinutes * numberOfMinutes * 100;
-					// Open Checkout with further options
-					handler.open({
-						name: 'iPService Checkout: ' + scope.serviceType,
-						description: "Services Time: " + numberOfMinutes,
-						amount: cost
-					});
-				}
-				// Close Checkout on page navigation
-				$(window).on('popstate', function()
-				 {
-					handler.close();
-					});
-			</script>
-
-						<table width="100%">
-							<tr>
-								<td width="50%">
-								<form novalidate>
-									<h2>Service Type</h2>
-										<button ng-click="softwareServiceButtonOnClick()">Software Service</button>
-										<button ng-click="hardwareServiceButtonOnClick()">hardware Service</button><br/>
-										<div ng-if="serviceType == 'Software'">
-													<h1>Software Service</h1>
-													<h1>Current Cost: {{costPerMinutes * software_numberOfMinutes}}</h1>
-													<input type="text" ng-change="changeSoftware()" ng-model="software_numberOfMinutes" style="border: 2px solid #ccc;" width="100%" placeholder="Number of Minutes">
-
-													<input type="text" ng-change="changeSoftware()" ng-model="software_instructions" style="border: 2px solid #ccc;" width="100%" placeholder="Special Instructions">
-													<br/>
-													<button ng-if="software_numberOfMinutes > 0" onclick="purchaseButtonPressed()">Purchase</button>
-									</div>
-									<div ng-if="serviceType == 'hardware'">
-													<h1>Hardware Service</h1>
-													<h1>Current Cost: {{costPerMinutes * hardware_numberOfMinutes}}</h1>
-													<input type="text" ng-change="changeHardware" ng-model="hardware_numberOfMinutes" style="border: 2px solid #ccc;" width="100%" placeholder="Number of Minutes">
-													<input type="text" ng-change="changeHardware()" ng-model="hardware_instructions" style="border: 2px solid #ccc;" width="100%" placeholder="Special Instructions">
-													<br/>
-													<button ng-if="hardware_numberOfMinutes > 0" onclick="purchaseButtonPressed()">Purchase</button>
-									</div>
-
-						</form>
-
-								</td>
-								<td width="50%">
-									<h3>Pending Requests (no provider yet)</h3>
-											<ul>
-													<li ng-repeat="obj in service_request_data | filter:{ provider: 'n/a'}">{{ obj.name }}</li>
-											</ul>
-								</td>
-								</tr>
-							<tr>
-								<td width="50%">
-									<h3>Incomplete Jobs</h3>
-												<ul>
-													<li ng-repeat="obj in service_request_data | filter:{ completed: false, provider: '!n/a'}">{{ obj.name }} ({{ obj.provider}})</li>
-											</ul>
-								</td>
-								<td width="50%">
-									<h3>Completed Jobs</h3>
-											<ul>
-													<li ng-repeat="obj in service_request_data | filter:{ completed: true}">{{ obj.name }} ({{ obj.provider}})</li>
-											</ul>
-								</td>
-							</tr>
-						</table>
-
+				  </td>
+				  <td width="50%">
+				  	<h3>Pending Requests (no provider yet)</h3>
+            		<ul>
+                		<li ng-repeat="obj in service_request_data | filter:{ provider: 'n/a'}">Waiting For A Provider - {{ obj.name }} ({{ obj.numberOfMinutes}} - minutes)</li>
+            		</ul>
+				  </td>
+			  	</tr>
+				<tr>
+				  <td width="50%">
+				  	<h3>Incomplete Jobs</h3>
+	              	<ul>
+	                	<li ng-repeat="obj in service_request_data | filter:{ completed: false, provider: '!n/a'}">Waiting For Service Completion - {{ obj.numberOfMinutes }} ({{ obj.time}} - minutes)</li>
+	            	</ul>
+				  </td>
+				  <td width="50%">
+				  	<h3>Completed Jobs</h3>
+	            	<ul>
+	                	<li ng-repeat="obj in service_request_data | filter:{ completed: true}">Completed Service - {{ obj.name }} ({{ obj.numberOfMinutes}} - minutes)</li>
+	            	</ul>
+				  </td>
+				</tr>
+			</table>
 	    </div>
-</div>
-<!--start-copyright-->
-<div class="copy-right">
-		 <div class="wrap">
-		 <p>&copy; 2016 iPC SERVICE Signup & Signin Form.  All Rights  Reserved</a></p>
-	 </div>
-</div>
-<!--//end-copyright-->
+
+	    <div id="main" ng-if="role == 'provider'" ng-controller="providerController">
+			<table width="50%">
+				<tr>
+				  <td>
+				  	<h3>Pending Requests (no provider yet)</h3>
+            		<ul>
+                		<li ng-repeat="obj in service_request_data | filter:{ provider: 'n/a'}"><button ng-click="claimRequest(obj)">Accept - {{ obj.name }} ({{ obj.numberOfMinutes}} - minutes)</button></li>
+            		</ul>
+				  </td>
+				  <td width="50%">
+				  	<h3>Accepted Jobs</h3>
+	              	<ul>
+	                	<li ng-repeat="obj in service_request_data | filter:{ completed: false, provider: myUID}"><button ng-click="completeRequest(obj)">Complete - {{ obj.name }} ({{ obj.numberOfMinutes}} - minutes)</button></li>
+	            	</ul>
+				  </td>
+				  </tr>
+				  <tr>
+				  <td width="50%">
+				  	<h3>Completed Jobs</h3>
+	            	<ul>
+	                	<li ng-repeat="obj in service_request_data | filter:{ completed: true, provider: myUID}">{{ obj.name }} ({{ obj.numberOfMinutes}} - minutes) -> ${{obj.cost/100*0.8}}</li>
+	            	</ul>
+				  </td>
+				  <td width="50%">
+				  	<h3>Account Balance</h3>
+	            	<ul>
+	                	<li>${{myAccountTotal}}</li>
+	            	</ul>
+				  </td>
+				</tr>
+			</table>
+	    </div>
+
+	    <div id="main" ng-if="role == 'admin'" ng-controller="adminController">
+			<table width="50%">
+				<tr>
+				  <td>
+				  	<h3>Pending Requests (no provider yet)</h3>
+            		<ul>
+                		<li ng-repeat="obj in service_request_data | filter:{ provider: 'n/a'}">{{ obj.name }} ({{ obj.numberOfMinutes}} - minutes)</li>
+            		</ul>
+				  </td>
+				  <td width="50%">
+				  	<h3>Accepted Jobs</h3>
+	              	<ul>
+	                	<li ng-repeat="obj in service_request_data | filter:{ completed: false, provider: '!n/a'}">{{ obj.name }} ({{ obj.numberOfMinutes}} - minutes)</li>
+	            	</ul>
+				  </td>
+				  </tr>
+				  <tr>
+				  <td width="50%">
+				  	<h3>Completed Jobs</h3>
+	            	<ul>
+	                	<li ng-repeat="obj in service_request_data | filter:{ completed: true, provider: '!n/a'}"><button ng-click="payoutProvider(obj)">Payout - {{ obj.name }} ({{ obj.numberOfMinutes}} - minutes) -> ${{obj.cost/100*0.8}}</button></li>
+	            	</ul>
+				  </td>
+				  <td width="50%">
+				  	<h3>Account Balance</h3>
+	            	<ul>
+	                	<li>${{myAccountTotal}}</li>
+	            	</ul>
+				  </td>
+				</tr>
+			</table>
+	    </div>
+	</div>
 </body>
 </html>
